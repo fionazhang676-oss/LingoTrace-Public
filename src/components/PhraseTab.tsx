@@ -2,6 +2,48 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { PhrasePatternItem } from '../types';
 import { Bookmark, Heart, Volume2, Copy, Check, Plus, Sparkles, Star, Search, X, Trash2, CirclePlay, RotateCw, ArrowRight } from 'lucide-react';
+import { buildPhrasePracticeQueue } from '../utils/phrasePracticeQueue';
+
+const PHRASE_PRACTICE_STORAGE_KEY = 'lingotrace:phrase-practice:v1';
+
+type SavedPhrasePractice = {
+  date: string;
+  scope: string;
+  queueIds: string[];
+  currentIndex: number;
+  completedIds: string[];
+};
+
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function loadSavedPhrasePractice(): SavedPhrasePractice | null {
+  try {
+    const raw = window.localStorage.getItem(PHRASE_PRACTICE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SavedPhrasePractice>;
+    if (
+      typeof parsed.date !== 'string' || typeof parsed.scope !== 'string' ||
+      !Array.isArray(parsed.queueIds) || !Array.isArray(parsed.completedIds) ||
+      typeof parsed.currentIndex !== 'number'
+    ) return null;
+    return parsed as SavedPhrasePractice;
+  } catch {
+    return null;
+  }
+}
+
+function savePhrasePractice(session: SavedPhrasePractice) {
+  try {
+    window.localStorage.setItem(PHRASE_PRACTICE_STORAGE_KEY, JSON.stringify(session));
+  } catch {
+    // Practice still works when storage is unavailable; only resume is disabled.
+  }
+}
 
 export const PhraseTab: React.FC = () => {
   const { phrases, togglePhraseFavorite, addPhrase, deletePhrase, ratePhrase, theme } = useApp();
@@ -19,6 +61,7 @@ export const PhraseTab: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showPractice, setShowPractice] = useState(false);
   const [practiceIndex, setPracticeIndex] = useState(0);
+  const [practiceQueue, setPracticeQueue] = useState<PhrasePatternItem[]>([]);
   const [isPracticeRevealed, setIsPracticeRevealed] = useState(false);
 
   const [newPhrase, setNewPhrase] = useState({
@@ -44,11 +87,54 @@ export const PhraseTab: React.FC = () => {
     return matchesSearch && p.category === activeCategory;
   });
 
-  const practiceQueue = filteredPhrases.length > 0 ? filteredPhrases : phrases;
   const currentPracticePhrase = practiceQueue[practiceIndex] || practiceQueue[0];
 
+  const practiceCandidates = filteredPhrases.length > 0 ? filteredPhrases : phrases;
+  const practiceScope = `${activeCategory}:${searchQuery.trim().toLocaleLowerCase()}`;
+
   const startPractice = () => {
-    if (!practiceQueue.length) return;
+    if (!practiceCandidates.length) return;
+    const date = localDateKey();
+    const saved = loadSavedPhrasePractice();
+    const candidatesById = new Map(practiceCandidates.map(phrase => [phrase.id, phrase]));
+
+    if (saved?.date === date && saved.scope === practiceScope) {
+      const savedQueue = saved.queueIds
+        .map(id => candidatesById.get(id))
+        .filter((phrase): phrase is PhrasePatternItem => Boolean(phrase));
+      if (
+        savedQueue.length &&
+        saved.currentIndex >= 0 &&
+        saved.currentIndex < savedQueue.length
+      ) {
+        setPracticeQueue(savedQueue);
+        setPracticeIndex(saved.currentIndex);
+        setIsPracticeRevealed(false);
+        setShowPractice(true);
+        return;
+      }
+    }
+
+    const completedIds = saved?.date === date && saved.scope === practiceScope
+      ? saved.completedIds.filter(id => candidatesById.has(id))
+      : [];
+    const availableCount = practiceCandidates.length - completedIds.length;
+    const effectiveCompletedIds = availableCount > 0 ? completedIds : [];
+    const nextQueue = buildPhrasePracticeQueue(practiceCandidates, {
+      seed: `${date}:${practiceScope}:${effectiveCompletedIds.length}`,
+      excludedIds: effectiveCompletedIds,
+    });
+    if (!nextQueue.length) return;
+
+    const nextSession: SavedPhrasePractice = {
+      date,
+      scope: practiceScope,
+      queueIds: nextQueue.map(phrase => phrase.id),
+      currentIndex: 0,
+      completedIds: effectiveCompletedIds,
+    };
+    savePhrasePractice(nextSession);
+    setPracticeQueue(nextQueue);
     setPracticeIndex(0);
     setIsPracticeRevealed(false);
     setShowPractice(true);
@@ -57,11 +143,33 @@ export const PhraseTab: React.FC = () => {
   const handlePracticeRating = (remembered: boolean) => {
     if (!currentPracticePhrase) return;
     ratePhrase(currentPracticePhrase.id, remembered);
+    const date = localDateKey();
+    const saved = loadSavedPhrasePractice();
+    const completedIds = Array.from(new Set([
+      ...(saved?.date === date && saved.scope === practiceScope ? saved.completedIds : []),
+      currentPracticePhrase.id,
+    ]));
     if (practiceIndex < practiceQueue.length - 1) {
-      setPracticeIndex(index => index + 1);
+      const nextIndex = practiceIndex + 1;
+      savePhrasePractice({
+        date,
+        scope: practiceScope,
+        queueIds: practiceQueue.map(phrase => phrase.id),
+        currentIndex: nextIndex,
+        completedIds,
+      });
+      setPracticeIndex(nextIndex);
       setIsPracticeRevealed(false);
     } else {
+      savePhrasePractice({
+        date,
+        scope: practiceScope,
+        queueIds: [],
+        currentIndex: 0,
+        completedIds,
+      });
       setShowPractice(false);
+      setPracticeQueue([]);
       setPracticeIndex(0);
       setIsPracticeRevealed(false);
     }
@@ -193,9 +301,9 @@ export const PhraseTab: React.FC = () => {
           </span>
           <button
             onClick={startPractice}
-            disabled={!practiceQueue.length}
+            disabled={!practiceCandidates.length}
             className="flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--card-bg)] hover:text-[var(--text-primary)] disabled:opacity-40"
-            title="练习当前分类中的句型"
+            title="开始或继续今日 10 句复习"
           >
             <CirclePlay className="h-3.5 w-3.5" style={{ color: theme.colors.c700 }} />
             <span>练习当前句型</span>
