@@ -56,7 +56,7 @@ export const ProfileTab: React.FC = () => {
           style={{ borderColor: theme.primaryHex }}
         />
         <div className="space-y-1 flex-1">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
             {editingName ? (
               <div className="flex min-w-0 flex-1 items-center gap-1.5">
                 <input
@@ -77,6 +77,11 @@ export const ProfileTab: React.FC = () => {
                 {user && <button onClick={() => setEditingName(true)} aria-label="修改昵称" className="shrink-0 rounded-lg p-1 text-[var(--text-secondary)]"><Pencil className="h-3.5 w-3.5" /></button>}
               </div>
             )}
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="min-w-0 flex-1 break-all text-xs text-[var(--text-secondary)]">
+              {user?.email || '登录 Google 账号后可启用云端身份'}
+            </p>
             <button
               type="button"
               onClick={() => setShowLoginModal(true)}
@@ -90,9 +95,6 @@ export const ProfileTab: React.FC = () => {
               {user ? '切换账号' : '登录'}
             </button>
           </div>
-          <p className="text-xs text-[var(--text-secondary)] break-all">
-            {user?.email || '登录 Google 账号后可启用云端身份'}
-          </p>
           <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-2 pt-0.5">
             <span>ID: LT_89230</span>
             <span>·</span>
