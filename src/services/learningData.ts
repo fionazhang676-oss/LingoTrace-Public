@@ -174,6 +174,10 @@ export async function loadLearningData(userId: string): Promise<LearningDataSnap
       return Math.min(4, Math.max(1, state.review_count + 1));
     })(),
     isFavorite: row.is_favorite,
+    reviewCount: phraseReviewStates.get(row.id)?.review_count ?? 0,
+    reviewState: phraseReviewStates.get(row.id)?.state,
+    dueAt: phraseReviewStates.get(row.id)?.due_at ?? undefined,
+    lastReviewedAt: phraseReviewStates.get(row.id)?.last_reviewed_at ?? undefined,
   }));
   const errors: GrammarErrorItem[] = (errorsResult.data ?? []).map(row => ({
     id: row.id,

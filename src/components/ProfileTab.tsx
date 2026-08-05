@@ -2,7 +2,7 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { ThemeId } from '../types';
 import { MORANDI_THEMES } from '../data/mockData';
-import { Check, Moon, Sun, Clock, Target, Bot, Download, LogOut, ChevronRight, Sparkles, Type, FileJson, Pencil, Save, X } from 'lucide-react';
+import { Check, Moon, Sun, Clock, Target, Bot, Download, ChevronRight, Sparkles, Type, FileJson, Pencil, Save, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const ProfileTab: React.FC = () => {
@@ -56,7 +56,7 @@ export const ProfileTab: React.FC = () => {
           style={{ borderColor: theme.primaryHex }}
         />
         <div className="space-y-1 flex-1">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
             {editingName ? (
               <div className="flex min-w-0 flex-1 items-center gap-1.5">
                 <input
@@ -77,16 +77,24 @@ export const ProfileTab: React.FC = () => {
                 {user && <button onClick={() => setEditingName(true)} aria-label="修改昵称" className="shrink-0 rounded-lg p-1 text-[var(--text-secondary)]"><Pencil className="h-3.5 w-3.5" /></button>}
               </div>
             )}
-            <span
-              className="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
-              style={{ backgroundColor: theme.badgeBg, color: theme.badgeText }}
-            >
-              {user ? 'Google 已登录' : '访客模式'}
-            </span>
           </div>
-          <p className="text-xs text-[var(--text-secondary)] break-all">
-            {user?.email || '登录 Google 账号后可启用云端身份'}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="min-w-0 flex-1 break-all text-xs text-[var(--text-secondary)]">
+              {user?.email || '登录 Google 账号后可启用云端身份'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowLoginModal(true)}
+              className="shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold transition-opacity active-press hover:opacity-80"
+              style={{
+                backgroundColor: theme.colors.c150,
+                borderColor: theme.colors.c300,
+                color: theme.colors.c900
+              }}
+            >
+              {user ? '切换账号' : '登录'}
+            </button>
+          </div>
           <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-2 pt-0.5">
             <span>ID: LT_89230</span>
             <span>·</span>
@@ -284,16 +292,6 @@ export const ProfileTab: React.FC = () => {
           <ChevronRight className="w-4 h-4 text-[var(--text-secondary)]" />
         </button>
 
-        <button
-          onClick={() => setShowLoginModal(true)}
-          className="w-full p-3 rounded-xl bg-[var(--bg-main)]/50 hover:bg-[var(--bg-main)] text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center justify-between transition-colors active-press"
-        >
-          <div className="flex items-center gap-2">
-            <LogOut className="w-4 h-4" />
-            <span>预览登录页 / 切换账号</span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-[var(--text-secondary)]" />
-        </button>
       </section>
     </div>
   );

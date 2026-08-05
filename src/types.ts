@@ -100,6 +100,10 @@ export interface PhrasePatternItem {
   sourceTag: string;
   masteryLevel: number; // 1 to 5
   isFavorite: boolean;
+  reviewCount?: number;
+  reviewState?: string;
+  dueAt?: string;
+  lastReviewedAt?: string;
 }
 
 export interface DailyThought {
